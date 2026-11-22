@@ -1,5 +1,6 @@
 """Business rules used by the synthetic ShopFlow application."""
 
+from datetime import datetime
 from decimal import Decimal
 
 # Observing a status in old data does not make it a supported current state.
@@ -74,15 +75,23 @@ def invoice_outstanding(invoice):
     )
 
 
-def credit_release_eligible(order, assessment):
+def credit_release_eligible(order, assessment, *, at):
     """Eligibility is a candidate capability, not permission to execute it.
 
-    An active hold must be credit-related and the latest assessment must approve
-    release. The service separately requires a finance approver and expected
+    An active hold must be credit-related and the assessment must approve
+    release within its validity interval. The service selects the latest credit
+    assessment and separately requires a finance approver and expected
     record version. A shipping delay does not qualify for a credit release.
     """
+    if not isinstance(at, datetime) or at.tzinfo is None:
+        raise ValueError("An explicit timezone-aware evaluation time is required")
+    start = datetime.fromisoformat(assessment["assessedAt"])
+    end = datetime.fromisoformat(assessment["validUntil"])
+    if start.tzinfo is None or end.tzinfo is None:
+        raise ValueError("Assessment validity must include a timezone")
     return (
-        order["status"] == "on_hold"
+        start <= at < end
+        and order["status"] == "on_hold"
         and order.get("hold", {}).get("reason") == "credit_review"
         and assessment["subject"]["customerId"] == order["customerId"]
         and assessment["assessmentType"] == "credit_risk"

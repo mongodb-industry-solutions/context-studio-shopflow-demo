@@ -1,5 +1,8 @@
 import unittest
+from datetime import datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
+from unittest.mock import Mock
 from shopflow_demo.generate import build
 from shopflow_demo.domain import (
     uncaptured_amount,
@@ -45,12 +48,34 @@ class DomainTests(unittest.TestCase):
             uncaptured_amount(self.ops["orders"][1], [])
 
     def test_eligibility_is_specific(self):
+        at = datetime(2026, 10, 27, tzinfo=timezone.utc)
         self.assertTrue(
-            credit_release_eligible(self.ops["orders"][0], self.ops["assessments"][0])
+            credit_release_eligible(
+                self.ops["orders"][0], self.ops["assessments"][0], at=at
+            )
         )
         self.assertFalse(
-            credit_release_eligible(self.ops["orders"][0], self.ops["assessments"][1])
+            credit_release_eligible(
+                self.ops["orders"][0], self.ops["assessments"][1], at=at
+            )
         )
+
+    def test_expired_or_future_assessment_cannot_release(self):
+        for at in [
+            datetime(2026, 10, 1, tzinfo=timezone.utc),
+            datetime(2026, 11, 22, tzinfo=timezone.utc),
+        ]:
+            self.assertFalse(
+                credit_release_eligible(
+                    self.ops["orders"][0], self.ops["assessments"][0], at=at
+                )
+            )
+        with self.assertRaises(ValueError):
+            credit_release_eligible(
+                self.ops["orders"][0],
+                self.ops["assessments"][0],
+                at=datetime(2026, 10, 27),
+            )
 
     def test_denied_reads_do_not_touch_database(self):
         from shopflow_demo.store import unpaid_orders, invoice_balances
@@ -59,6 +84,56 @@ class DomainTests(unittest.TestCase):
             unpaid_orders(None, "CUST-0001", actor_role="support")
         with self.assertRaises(PermissionError):
             invoice_balances(None, None, "CUST-0001", actor_role="support")
+
+    def test_action_uses_stored_latest_assessment_and_compare_and_set(self):
+        from shopflow_demo.store import release_credit_hold
+
+        orders, assessments = Mock(), Mock()
+        operations = SimpleNamespace(orders=orders, assessments=assessments)
+        order, assessment = self.ops["orders"][0], self.ops["assessments"][0]
+        orders.find_one.return_value = order
+        assessments.find_one.return_value = assessment
+        at = datetime(2026, 10, 27, tzinfo=timezone.utc)
+        with self.assertRaises(PermissionError):
+            release_credit_hold(
+                None,
+                order["_id"],
+                assessment["_id"],
+                actor_role="support",
+                expected_version=1,
+                at=at,
+            )
+        with self.assertRaises(ValueError):
+            release_credit_hold(
+                operations,
+                order["_id"],
+                "older-approval",
+                actor_role="finance_approver",
+                expected_version=1,
+                at=at,
+            )
+        orders.update_one.assert_not_called()
+        orders.update_one.return_value.modified_count = 0
+        with self.assertRaisesRegex(ValueError, "Order changed"):
+            release_credit_hold(
+                operations,
+                order["_id"],
+                assessment["_id"],
+                actor_role="finance_approver",
+                expected_version=1,
+                at=at,
+            )
+        self.assertEqual(orders.update_one.call_args.args[0]["version"], 1)
+        orders.update_one.return_value.modified_count = 1
+        result = release_credit_hold(
+            operations,
+            order["_id"],
+            assessment["_id"],
+            actor_role="finance_approver",
+            expected_version=1,
+            at=at,
+        )
+        self.assertEqual(result["version"], 2)
 
     def test_relationships_and_determinism(self):
         self.assertEqual(build(), build())

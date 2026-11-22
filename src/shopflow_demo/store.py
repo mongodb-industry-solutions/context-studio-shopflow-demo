@@ -1,5 +1,7 @@
 """MongoDB access used by the companion application; no inferred bindings."""
 
+from datetime import datetime, timezone
+
 from .domain import uncaptured_amount, invoice_outstanding, credit_release_eligible
 
 
@@ -53,13 +55,26 @@ def invoice_balances(operations, billing, customer_number, *, actor_role):
 
 
 def release_credit_hold(
-    operations, order_id, assessment, *, actor_role, expected_version
+    operations, order_id, assessment_id, *, actor_role, expected_version, at=None
 ):
     """Named action: eligibility, authority and compare-and-set are separate."""
     if actor_role != "finance_approver":
         raise PermissionError("Finance approval required")
     order = operations.orders.find_one({"_id": order_id})
-    if not order or not credit_release_eligible(order, assessment):
+    if not order:
+        raise ValueError("Order not found")
+    # Load trusted stored evidence; callers cannot supply their own approval.
+    assessment = operations.assessments.find_one(
+        {"subject.customerId": order["customerId"], "assessmentType": "credit_risk"},
+        sort=[("assessedAt", -1), ("_id", -1)],
+    )
+    if (
+        not assessment
+        or assessment["_id"] != assessment_id
+        or not credit_release_eligible(
+            order, assessment, at=at or datetime.now(timezone.utc)
+        )
+    ):
         raise ValueError("Credit release preconditions are not met")
     result = operations.orders.update_one(
         {

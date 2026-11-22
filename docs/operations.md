@@ -33,5 +33,11 @@ A risk assessment is a time-bounded statement about a customer, with author,
 evidence, conclusion and sometimes model confidence. It is not an objective,
 permanent customer attribute. A model's assessment is not a permission grant.
 Credit release is eligible only for a credit-related order hold and a matching
-assessment approving release. It still requires finance approval and an expected
+latest stored credit assessment approving release within its validity interval.
+The action loads the assessment by identity; caller-supplied assertions cannot
+create approval. It still requires finance approval and an expected
 order version. Executable code records this separation in `release_credit_hold`.
+
+The generated records use a fixed October 2026 timeline. At later dates, their
+expired assessments correctly prevent release. Tests pass an explicit evaluation
+time inside that interval; the service defaults to the current UTC time.
