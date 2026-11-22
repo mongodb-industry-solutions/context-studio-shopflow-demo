@@ -30,3 +30,19 @@ older policy and is retained to make version provenance explicit.
 
 Tests are separate from repository-enrichment inputs. No generated semantic-map
 answers or Context Studio implementation files belong to this repository.
+
+## Calculation functions
+
+`shopflow_demo.calculations` exposes two pure application functions with typed
+signatures and documented evidence requirements:
+
+- `order_collection_gap(order, payments)`: the order amount not covered by settled
+  captures, preserving currency and distinguishing reservations from captures.
+- `invoice_receivable(invoice)`: the invoice balance after cash and credit notes,
+  converting the declared minor currency units to major units.
+
+Both return JSON-compatible result objects and leave their inputs unchanged.
+These functions illustrate code that a semantic inspection can discover as
+candidate tools. They are not deployed HTTP endpoints. A consuming platform must
+review the contract, bind complete authorized record inputs, verify the code
+revision and register execution before exposing a callable capability.
