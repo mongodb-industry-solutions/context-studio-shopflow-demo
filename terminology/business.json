@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "effectiveFrom": "2026-10-01",
+  "concepts": [
+    {"id":"operations.customer","label":"Customer","aliases":{"en":["buyer"],"es":["cliente","comprador"],"fr":["client","acheteur"]}},
+    {"id":"billing.account","label":"Billing account","aliases":{"en":["debtor account"],"es":["cuenta de facturación"]},"relatedConcept":"operations.customer","equivalent":false},
+    {"id":"operations.uncaptured_amount","label":"Uncaptured order amount","aliases":{"en":["unpaid order amount"],"es":["importe del pedido pendiente de cobro"]},"unit":"recorded currency"},
+    {"id":"billing.receivable","label":"Invoice receivable","aliases":{"en":["invoice balance"],"es":["saldo pendiente de factura"]},"unit":"recorded currency","equivalentToUncapturedAmount":false}
+  ],
+  "valueSets": [
+    {"id":"operations.order_status","authority":"operations-policy-v1","closed":true,"values":["open","confirmed","fulfilled","cancelled","returned","on_hold"]},
+    {"id":"billing.invoice_status","authority":"billing-policy-v1","closed":true,"values":["draft","open","paid","void"]},
+    {"id":"billing.account_status","authority":"billing-policy-v1","closed":true,"values":["open","suspended","closed"]},
+    {"id":"operations.customer_segment","authority":"operations-policy-v1","closed":true,"values":["standard","loyal","strategic"]}
+  ]
+}

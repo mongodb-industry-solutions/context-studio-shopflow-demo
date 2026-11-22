@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "shopflow-synthetic-demo"
+version = "0.1.0"
+description = "Controlled synthetic commerce and billing demonstration"
+requires-python = ">=3.11"
+dependencies = []
+[project.optional-dependencies]
+mongodb = ["pymongo>=4.6,<5"]
+[tool.setuptools.packages.find]
+where = ["src"]

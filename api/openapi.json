@@ -1,0 +1,9 @@
+{
+  "openapi":"3.1.0",
+  "info":{"title":"ShopFlow reference service contract","version":"1.0.0","description":"Synthetic application contract. Business and MongoDB implementation functions are provided; an HTTP server is not provisioned by this package."},
+  "paths":{
+    "/customers/{customerNumber}/uncaptured-orders":{"get":{"operationId":"unpaid_orders","description":"Order totals not covered by settled captures; currency preserved. Requires finance access.","parameters":[{"name":"customerNumber","in":"path","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"Per-order remaining amounts"},"403":{"description":"Financial access denied"}}}},
+    "/customers/{customerNumber}/invoice-balances":{"get":{"operationId":"invoice_balances","description":"Billing receivables; match customer through qualified business identifier, not local database ID.","parameters":[{"name":"customerNumber","in":"path","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"Per-invoice balances in recorded currency"}}}},
+    "/orders/{orderId}/release-credit-hold":{"post":{"operationId":"release_credit_hold","description":"Requires finance_approver authority, a credit hold, matching release-approved assessment and expected version. Eligibility alone grants no authority.","parameters":[{"name":"orderId","in":"path","required":true,"schema":{"type":"string"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["expectedVersion","assessmentId"],"properties":{"expectedVersion":{"type":"integer"},"assessmentId":{"type":"string"}}}}}},"responses":{"200":{"description":"Confirmed order and incremented version"},"403":{"description":"Approver role required"},"409":{"description":"Version conflict or failed precondition"}}}}
+  }
+}
